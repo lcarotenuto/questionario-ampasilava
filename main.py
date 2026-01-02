@@ -155,7 +155,12 @@ class FormTab(QWidget):
 
         for key, value in data.items():
             if not value or value == '-':
-                QMessageBox.warning(self, "Errore", f"{key} è obbligatorio.")
+                k = key.replace('_', ' ')
+                if k in ('q1', 'q2', 'q3', 'q4', 'q5'):
+                    msg = f'Domanda {k.lstrip("q")} mancante'
+                else:
+                    msg = f"{k.capitalize()} è obbligatorio."
+                QMessageBox.warning(self, "Errore", msg)
                 return
 
         try:
