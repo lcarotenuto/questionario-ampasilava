@@ -10,9 +10,10 @@ from db import init_db, insert_registro, list_registro, get_registro, update_reg
 from export_utils import export_rows_to_csv
 
 
-YES_NO_NS = ["Sì", "No", "Non so"]
-VILLAGGI = ["Andavadoaka", "Befandefa"]
-SESSI = ["Maschio", "Femmina"]
+YES_NO_NS = ["-", "Sì", "No", "Non so"]
+YES_NO = ["-", 'Sì', 'No']
+VILLAGGI = ["-", "Befandefa", "Andavadoaka"]
+SESSI = ["-", "Maschio", "Femmina"]
 
 
 def bool_to_int(v: bool) -> int:
@@ -38,11 +39,11 @@ class FormTab(QWidget):
         lay.addLayout(self._row("Villaggio screening", self.villaggio))
 
         # Consensi
-        self.consenso_informato = QCheckBox("Sì (spuntato = Sì)")
-        self.consenso_orale_testimone = QCheckBox("Sì (spuntato = Sì)")
-        lay.addWidget(QLabel("Spiegazione consenso informato (Sì/No)"))
+        self.consenso_informato = QCheckBox("Sì")
+        self.consenso_orale_testimone = QCheckBox("Sì")
+        lay.addWidget(QLabel("Spiegazione consenso informato"))
         lay.addWidget(self.consenso_informato)
-        lay.addWidget(QLabel("Consenso orale con testimone (Sì/No)"))
+        lay.addWidget(QLabel("Consenso orale con testimone"))
         lay.addWidget(self.consenso_orale_testimone)
 
         # Età mesi dichiarata
@@ -71,20 +72,20 @@ class FormTab(QWidget):
         self.peso.setRange(0, 1000)
         self.peso.setDecimals(2)
         self.peso.setSingleStep(0.1)
-        lay.addLayout(self._row("Peso", self.peso))
+        lay.addLayout(self._row("Peso (Kg)", self.peso))
 
         self.altezza = QDoubleSpinBox()
         self.altezza.setRange(0, 300)
-        self.altezza.setDecimals(2)
+        self.altezza.setDecimals(0)
         self.altezza.setSingleStep(0.1)
-        lay.addLayout(self._row("Altezza", self.altezza))
+        lay.addLayout(self._row("Altezza (cm)", self.altezza))
 
         # Domande
         self.q1 = QComboBox(); self.q1.addItems(YES_NO_NS)
-        self.q2 = QComboBox(); self.q2.addItems(YES_NO_NS)
+        self.q2 = QComboBox(); self.q2.addItems(YES_NO)
         self.q3 = QComboBox(); self.q3.addItems(YES_NO_NS)
         self.q4 = QComboBox(); self.q4.addItems(YES_NO_NS)
-        self.q5 = QComboBox(); self.q5.addItems(YES_NO_NS)
+        self.q5 = QComboBox(); self.q5.addItems(YES_NO)
 
         lay.addLayout(self._row("Negli ultimi 7 giorni ha mangiato meno/rifiutato cibo?", self.q1))
         lay.addLayout(self._row("Ieri ha mangiato almeno 3 volte (oltre al latte)?", self.q2))
@@ -151,6 +152,11 @@ class FormTab(QWidget):
             "q4": self.q4.currentText(),
             "q5": self.q5.currentText(),
         }
+
+        for key, value in data.items():
+            if not value or value == '-':
+                QMessageBox.warning(self, "Errore", f"{key} è obbligatorio.")
+                return
 
         try:
             insert_registro(data)
