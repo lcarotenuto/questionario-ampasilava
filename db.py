@@ -1,11 +1,54 @@
 import sqlite3
+import sys
 from pathlib import Path
 
-DB_PATH = Path(__file__).with_name("questionario.sqlite3")
+
+APP_DB_FILENAME = "questionario.sqlite3"
+
+
+def portable_base_dir() -> Path:
+    """
+    Restituisce la cartella 'accanto' all'eseguibile:
+    - Dev mode: cartella del progetto (dove sta db.py)
+    - Windows frozen: cartella dell'EXE
+    - macOS frozen: cartella che CONTIENE la .app (non dentro la .app)
+    """
+    if getattr(sys, "frozen", False):
+        exe_path = Path(sys.executable).resolve()
+
+        if sys.platform == "darwin":
+            # .../MyApp.app/Contents/MacOS/MyApp  -> vogliamo la cartella che contiene MyApp.app
+            # parents[0]=MacOS, [1]=Contents, [2]=MyApp.app, [3]=cartella contenente la .app
+            return exe_path.parents[3]
+
+        # Windows/Linux: cartella dell'eseguibile
+        return exe_path.parent
+
+    # dev mode
+    return Path(__file__).resolve().parent
+
+
+def db_path() -> Path:
+    base = portable_base_dir()
+    data_dir = base / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return data_dir / APP_DB_FILENAME
+
+
+DB_PATH = db_path()
+
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn = sqlite3.connect(DB_PATH)
+    except sqlite3.OperationalError as e:
+        # Tipico su macOS se stai lanciando da DMG / Applications senza permessi
+        raise RuntimeError(
+            f"Impossibile creare/scrivere il DB in: {DB_PATH}\n"
+            f"Assicurati che l'app sia in una cartella scrivibile (Desktop/USB) e che esista 'data/'.\n"
+            f"Errore originale: {e}"
+        )
     conn.row_factory = sqlite3.Row
     return conn
 

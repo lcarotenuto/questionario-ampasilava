@@ -1,1 +1,4 @@
 /questionario.sqlite3
+Questionario.spec
+build/*
+dist/*
