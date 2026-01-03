@@ -785,6 +785,7 @@ class RegistryForm(QWidget):
         self.q5.setCurrentIndex(0)
         self.whz.setText("")
         self.whz_status.clear()
+        self.whz_status.setStyleSheet('')
 
     def get_data(self) -> Dict[str, Any]:
         # Forza ricalcolo WHZ prima di leggere il valore
