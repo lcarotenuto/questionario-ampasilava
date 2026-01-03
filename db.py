@@ -61,7 +61,7 @@ def init_db():
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS registro (
-                taratassi TEXT PRIMARY KEY,
+                taratassi TEXT PRIMARY KEY UNIQUE,
                 village TEXT NOT NULL CHECK (village IN ('Andavadoaka','Befandefa')),
                 consent INTEGER NOT NULL CHECK (consent IN (0,1)),
                 witnessed INTEGER NOT NULL CHECK (witnessed IN (0,1)),
@@ -115,10 +115,10 @@ def list_registro(search: str = ""):
 
 def get_registro(taratassi: str):
     with get_conn() as conn:
-        return conn.execute(
+        return dict(conn.execute(
             "SELECT * FROM registro WHERE taratassi = ?",
             (taratassi,),
-        ).fetchone()
+        ).fetchone())
 
 
 def update_registro(taratassi: str, data: dict):

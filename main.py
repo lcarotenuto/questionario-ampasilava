@@ -1,6 +1,8 @@
 import math
+import sqlite3
 import sys
 from decimal import Decimal, ROUND_HALF_UP
+from typing import Dict, Any, Tuple, Optional
 
 from PySide6.QtWidgets import (
     QApplication, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
@@ -537,25 +539,49 @@ def bool_to_int(v: bool) -> int:
     return 1 if v else 0
 
 
-class FormTab(QWidget):
-    def __init__(self, on_saved_callback):
-        super().__init__()
-        self.on_saved_callback = on_saved_callback
+class RegistroForm(QWidget):
+    """
+    Widget riusabile: stessa UI per creazione e modifica.
+    Contiene:
+      - costruzione UI
+      - calcolo WHZ automatico
+      - clear()
+      - get_data()
+      - set_data(row)
+      - validate(data)
+    """
+    def __init__(self, *, taratassi_readonly: bool = False, parent=None):
+        super().__init__(parent)
         self._build()
+        self.set_taratassi_readonly(taratassi_readonly)
 
-    def _get_age(self):
-        dichiarata = self.declared_age.value()
-        stimata = self.age_estimation.value()
+    # ---------- UI helpers ----------
+    def _row(self, label: str, widget: QWidget) -> QHBoxLayout:
+        r = QHBoxLayout()
+        r.addWidget(QLabel(label))
+        r.addWidget(widget, 1)
+        return r
+
+
+    def set_taratassi_readonly(self, readonly: bool) -> None:
+        self.taratassi.setReadOnly(readonly)
+        # opzionale: rendilo anche visivamente "non editabile"
+        # self.taratassi.setStyleSheet("background:#f3f3f3;" if readonly else "")
+
+    # ---------- WHZ logic (spostata da FormTab) ----------
+    def _get_age(self) -> int:
+        dichiarata = int(self.declared_age.value())
+        stimata = int(self.age_estimation.value())
         if abs(dichiarata - stimata) > 3:
             return stimata
-        else:
-            return dichiarata
+        return dichiarata
 
-    def _get_quantized_height(self):
+    def _get_quantized_height(self) -> float:
         d = Decimal(str(self.height.value()))
+        # arrotonda a 0.5 (utile perché le chiavi LMS sono ogni 0.5 cm)
         return float(d.quantize(Decimal("0.5"), rounding=ROUND_HALF_UP))
 
-    def _get_lms_values(self):
+    def _get_lms_values(self) -> Tuple[Optional[float], Optional[float], Optional[float]]:
         age = self._get_age()
         sex = self.gender.currentText()
         height = self._get_quantized_height()
@@ -563,31 +589,37 @@ class FormTab(QWidget):
             return None, None, None
 
         if sex == "Maschio":
-            sex_key = 'boys'
+            sex_key = "boys"
         elif sex == "Femmina":
-            sex_key = 'girls'
+            sex_key = "girls"
         else:
             return None, None, None
 
-        if age <= 24:
-            age_key = '0_2'
-        elif age > 24:
-            age_key = '2_5'
-        else:
+        age_key = "0_2" if age <= 24 else "2_5"
+
+        table = LMS.get(sex_key, {}).get(age_key, {})
+        vals = table.get(height)
+        if not vals:
             return None, None, None
+        return vals[0], vals[1], vals[2]
 
-        return LMS[sex_key][age_key][height]
+    def _update_whz_value(self) -> None:
+        try:
+            l, m, s = self._get_lms_values()
+            weight = float(self.weight.value())
 
-    def _update_whz_value(self):
-        l, m, s = self._get_lms_values()
-        weight = self.weight.value()
-        if not l or not m or not s or not weight:
-            self.whz.setText("")
-        else:
+            if l is None or m is None or s is None or weight <= 0:
+                self.whz.setText("")
+                return
+
             whz = round(compute_whz(weight, l, m, s), 1)
             self.whz.setText(str(whz))
+        except Exception:
+            # se height fuori range LMS, ecc.
+            self.whz.setText("")
 
-    def _build(self):
+    # ---------- Build UI ----------
+    def _build(self) -> None:
         lay = QVBoxLayout(self)
 
         # Taratassi
@@ -641,17 +673,17 @@ class FormTab(QWidget):
 
         self.height = QDoubleSpinBox()
         self.height.setRange(0, 300)
-        self.height.setDecimals(0)
+        self.height.setDecimals(0)   # uguale alla creazione
         self.height.setSingleStep(0.1)
         self.height.editingFinished.connect(self._update_whz_value)
         lay.addLayout(self._row("height (cm)", self.height))
 
         self.whz = QLineEdit()
         self.whz.setReadOnly(True)
-        self.whz.setPlaceholderText('Viene calcolato automaticamente')
+        self.whz.setPlaceholderText("Viene calcolato automaticamente")
         lay.addLayout(self._row("WHZ", self.whz))
 
-        # Domande
+        # Domande (uguali alla creazione)
         self.q1 = QComboBox(); self.q1.addItems(YES_NO_NS)
         self.q2 = QComboBox(); self.q2.addItems(YES_NO)
         self.q3 = QComboBox(); self.q3.addItems(YES_NO_NS)
@@ -664,26 +696,10 @@ class FormTab(QWidget):
         lay.addLayout(self._row("Febbre ultime 2 settimane?", self.q4))
         lay.addLayout(self._row("Prende ancora latte materno?", self.q5))
 
-        # Pulsanti
-        btns = QHBoxLayout()
-        self.save_btn = QPushButton("Salva compilazione")
-        self.clear_btn = QPushButton("Svuota form")
-        btns.addWidget(self.save_btn)
-        btns.addWidget(self.clear_btn)
-        lay.addLayout(btns)
-
-        self.save_btn.clicked.connect(self._save)
-        self.clear_btn.clicked.connect(self._clear)
-
         lay.addStretch(1)
 
-    def _row(self, label, widget):
-        r = QHBoxLayout()
-        r.addWidget(QLabel(label))
-        r.addWidget(widget, 1)
-        return r
-
-    def _clear(self):
+    # ---------- Data binding ----------
+    def clear(self) -> None:
         self.taratassi.setText("")
         self.village.setCurrentIndex(0)
         self.consent.setChecked(False)
@@ -699,15 +715,14 @@ class FormTab(QWidget):
         self.q3.setCurrentIndex(0)
         self.q4.setCurrentIndex(0)
         self.q5.setCurrentIndex(0)
+        self.whz.setText("")
 
-    def _save(self):
-        tar = self.taratassi.text().strip()
-        if not tar:
-            QMessageBox.warning(self, "Errore", "N° Taratassi è obbligatorio.")
-            return
+    def get_data(self) -> Dict[str, Any]:
+        # Forza ricalcolo WHZ prima di leggere il valore
+        self._update_whz_value()
 
-        data = {
-            "taratassi": tar,
+        return {
+            "taratassi": self.taratassi.text().strip(),
             "village": self.village.currentText(),
             "consent": bool_to_int(self.consent.isChecked()),
             "witnessed": bool_to_int(self.witnessed.isChecked()),
@@ -725,25 +740,130 @@ class FormTab(QWidget):
             "q5": self.q5.currentText(),
         }
 
-        for key, value in data.items():
-            if not value or value == '-':
-                k = key.replace('_', ' ')
-                if k in ('q1', 'q2', 'q3', 'q4', 'q5'):
-                    msg = f'Domanda {k.lstrip("q")} mancante'
-                else:
-                    msg = f"{k.capitalize()} è obbligatorio."
-                QMessageBox.warning(self, "Errore", msg)
-                return
+    def set_data(self, row: Dict[str, Any]) -> None:
+        # blocca segnali se vuoi evitare calcoli WHZ intermedi mentre setti valori
+        self.taratassi.setText(row.get("taratassi", "") or "")
+        self.village.setCurrentText(row.get("village", "-") or "-")
+        self.consent.setChecked((row.get("consent") or 0) == 1)
+        self.witnessed.setChecked((row.get("witnessed") or 0) == 1)
+
+        self.declared_age.setValue(int(row.get("declared_age") or 0))
+        self.age_estimation.setValue(int(row.get("age_estimation") or 0))  # <-- fix bug: era declared_age
+        self.gender.setCurrentText(row.get("gender", "-") or "-")
+
+        self.muac.setValue(float(row.get("muac") or 0))
+        self.weight.setValue(float(row.get("weight") or 0))
+        self.height.setValue(float(row.get("height") or 0))
+
+        self.q1.setCurrentText(row.get("q1", "-") or "-")
+        self.q2.setCurrentText(row.get("q2", "-") or "-")
+        self.q3.setCurrentText(row.get("q3", "-") or "-")
+        self.q4.setCurrentText(row.get("q4", "-") or "-")
+        self.q5.setCurrentText(row.get("q5", "-") or "-")
+
+        # ricalcola WHZ e, se non calcolabile, mostra quello salvato (se presente)
+        self._update_whz_value()
+        if not self.whz.text() and row.get("whz") is not None:
+            self.whz.setText(str(row["whz"]))
+
+    # ---------- Validation ----------
+    def validate(self, data: Optional[Dict[str, Any]] = None, *, require_taratassi: bool = True) -> Tuple[bool, str]:
+        if data is None:
+            data = self.get_data()
+
+        labels = {
+            "taratassi": "N° Taratassi",
+            "village": "Village",
+            "consent": "Spiegazione consenso informato",
+            "witnessed": "Consenso orale con testimone",
+            "declared_age": "Età in mesi dichiarata",
+            "age_estimation": "Età in mesi stimata",
+            "gender": "Sesso",
+            "muac": "MUAC",
+            "weight": "Peso",
+            "height": "Altezza",
+            "whz": "WHZ",
+        }
+
+        # ordine “umano” (simile al tuo)
+        ordered_keys = [
+            "taratassi", "village",
+            "consent", "witnessed",
+            "declared_age", "age_estimation", "gender",
+            "muac", "weight", "height", "whz",
+            "q1", "q2", "q3", "q4", "q5"
+        ]
+
+        for key in ordered_keys:
+            if key == "taratassi" and not require_taratassi:
+                continue
+
+            value = data.get(key)
+
+            missing = False
+            if key in ("village", "gender", "q1", "q2", "q3", "q4", "q5"):
+                missing = (value is None) or (value == "") or (value == "-")
+            elif key in ("consent", "witnessed"):
+                missing = (value != 1)  # devono essere spuntati
+            elif key in ("declared_age", "age_estimation"):
+                missing = (value is None) or (int(value) <= 0)
+            elif key == "whz":
+                # IMPORTANT: whz=0.0 è valido, quindi controlla solo None
+                missing = (value is None)
+            else:
+                # muac/weight/height: se 0 li trasformiamo in None, quindi basta None
+                missing = (value is None)
+
+            if missing:
+                if key.startswith("q"):
+                    return False, f"Domanda {key[1:]} mancante"
+                return False, f"{labels.get(key, key)} è obbligatorio."
+
+        return True, ""
+
+class FormTab(QWidget):
+    def __init__(self, on_saved_callback):
+        super().__init__()
+        self.on_saved_callback = on_saved_callback
+        self._build()
+
+    def _build(self):
+        lay = QVBoxLayout(self)
+
+        # form riusabile
+        self.form = RegistroForm(taratassi_readonly=False)
+        lay.addWidget(self.form, 1)
+
+        # Pulsanti
+        btns = QHBoxLayout()
+        self.save_btn = QPushButton("Salva compilazione")
+        self.clear_btn = QPushButton("Svuota form")
+        btns.addWidget(self.save_btn)
+        btns.addWidget(self.clear_btn)
+        lay.addLayout(btns)
+
+        self.save_btn.clicked.connect(self._save)
+        self.clear_btn.clicked.connect(self.form.clear)
+
+    def _save(self):
+        data = self.form.get_data()
+        ok, msg = self.form.validate(data, require_taratassi=True)
+        if not ok:
+            QMessageBox.warning(self, "Errore", msg)
+            return
 
         try:
             insert_registro(data)
+        except sqlite3.IntegrityError:
+            QMessageBox.critical(self, "Errore salvataggio", "N° Taratassi già esistente.")
+            return
         except Exception as e:
             QMessageBox.critical(self, "Errore salvataggio", str(e))
             return
 
         QMessageBox.information(self, "OK", "Compilazione salvata correttamente.")
         self.on_saved_callback()
-        self._clear()
+        self.form.clear()
 
 class EditDialog(QDialog):
     def __init__(self, taratassi: str, parent=None):
@@ -757,54 +877,9 @@ class EditDialog(QDialog):
     def _build(self):
         lay = QVBoxLayout(self)
 
-        # Taratassi (solo lettura)
-        self.taratassi = QLineEdit()
-        self.taratassi.setReadOnly(True)
-        lay.addLayout(self._row("N° Taratassi", self.taratassi))
-
-        self.village = QComboBox(); self.village.addItems(VILLAGGI)
-        lay.addLayout(self._row("village screening", self.village))
-
-        self.consent = QCheckBox("Sì (spuntato = Sì)")
-        self.witnessed = QCheckBox("Sì (spuntato = Sì)")
-        lay.addWidget(QLabel("Spiegazione consenso informato (Sì/No)"))
-        lay.addWidget(self.consent)
-        lay.addWidget(QLabel("Consenso orale con testimone (Sì/No)"))
-        lay.addWidget(self.witnessed)
-
-        # Età mesi dichiarata
-        self.declared_age = QSpinBox()
-        self.declared_age.setRange(0, 2400)
-        lay.addLayout(self._row("Età in mesi dichiarata", self.declared_age))
-
-        # Età mesi stimata
-        self.age_estimation = QSpinBox()
-        self.age_estimation.setRange(0, 2400)
-        lay.addLayout(self._row("Età in mesi stimata", self.age_estimation))
-
-        self.gender = QComboBox(); self.gender.addItems(SESSI)
-        lay.addLayout(self._row("gender", self.gender))
-
-        self.muac = QDoubleSpinBox(); self.muac.setRange(0, 1000); self.muac.setDecimals(2); self.muac.setSingleStep(0.1)
-        lay.addLayout(self._row("Circonferenza braccio (MUAC) cm", self.muac))
-
-        self.weight = QDoubleSpinBox(); self.weight.setRange(0, 1000); self.weight.setDecimals(2); self.weight.setSingleStep(0.1)
-        lay.addLayout(self._row("weight", self.weight))
-
-        self.height = QDoubleSpinBox(); self.height.setRange(0, 300); self.height.setDecimals(2); self.height.setSingleStep(0.1)
-        lay.addLayout(self._row("height", self.height))
-
-        self.q1 = QComboBox(); self.q1.addItems(YES_NO_NS)
-        self.q2 = QComboBox(); self.q2.addItems(YES_NO_NS)
-        self.q3 = QComboBox(); self.q3.addItems(YES_NO_NS)
-        self.q4 = QComboBox(); self.q4.addItems(YES_NO_NS)
-        self.q5 = QComboBox(); self.q5.addItems(YES_NO_NS)
-
-        lay.addLayout(self._row("Negli ultimi 7 giorni ha mangiato meno/rifiutato cibo?", self.q1))
-        lay.addLayout(self._row("Ieri ha mangiato almeno 3 volte (oltre al latte)?", self.q2))
-        lay.addLayout(self._row("Diarrea ultime 2 settimane?", self.q3))
-        lay.addLayout(self._row("Febbre ultime 2 settimane?", self.q4))
-        lay.addLayout(self._row("Prende ancora latte materno?", self.q5))
+        # stesso form della creazione, ma taratassi in sola lettura
+        self.form = RegistroForm(taratassi_readonly=True, parent=self)
+        lay.addWidget(self.form, 1)
 
         btns = QHBoxLayout()
         self.save_btn = QPushButton("Salva modifiche")
@@ -816,12 +891,6 @@ class EditDialog(QDialog):
         self.save_btn.clicked.connect(self._save)
         self.cancel_btn.clicked.connect(self.reject)
 
-    def _row(self, label, widget):
-        r = QHBoxLayout()
-        r.addWidget(QLabel(label))
-        r.addWidget(widget, 1)
-        return r
-
     def _load(self):
         row = get_registro(self.taratassi_value)
         if not row:
@@ -829,39 +898,19 @@ class EditDialog(QDialog):
             self.reject()
             return
 
-        self.taratassi.setText(row["taratassi"])
-        self.village.setCurrentText(row["village"])
-        self.consent.setChecked(row["consent"] == 1)
-        self.witnessed.setChecked(row["witnessed"] == 1)
-        self.declared_age.setValue(int(row["declared_age"] or 0))
-        self.age_estimation.setValue(int(row["declared_age"] or 0))
-        self.gender.setCurrentText(row["gender"])
-        self.muac.setValue(float(row["muac"] or 0))
-        self.weight.setValue(float(row["weight"] or 0))
-        self.height.setValue(float(row["height"] or 0))
-        self.q1.setCurrentText(row["q1"])
-        self.q2.setCurrentText(row["q2"])
-        self.q3.setCurrentText(row["q3"])
-        self.q4.setCurrentText(row["q4"])
-        self.q5.setCurrentText(row["q5"])
+        self.form.set_data(row)
 
     def _save(self):
-        data = {
-            "village": self.village.currentText(),
-            "consent": 1 if self.consent.isChecked() else 0,
-            "witnessed": 1 if self.witnessed.isChecked() else 0,
-            "declared_age": int(self.declared_age.value()),
-            "age_estimation": int(self.age_estimation.value()),
-            "gender": self.gender.currentText(),
-            "muac": float(self.muac.value()) if self.muac.value() != 0 else None,
-            "weight": float(self.weight.value()) if self.weight.value() != 0 else None,
-            "height": float(self.height.value()) if self.height.value() != 0 else None,
-            "q1": self.q1.currentText(),
-            "q2": self.q2.currentText(),
-            "q3": self.q3.currentText(),
-            "q4": self.q4.currentText(),
-            "q5": self.q5.currentText(),
-        }
+        full_data = self.form.get_data()
+
+        ok, msg = self.form.validate(full_data, require_taratassi=True)
+        if not ok:
+            QMessageBox.warning(self, "Errore", msg)
+            return
+
+        # taratassi non va aggiornato (chiave), quindi lo togliamo dall'update
+        data = dict(full_data)
+        data.pop("taratassi", None)
 
         try:
             update_registro(self.taratassi_value, data)
