@@ -985,6 +985,9 @@ class ResultsTab(QWidget):
 
     def export_csv(self):
         rows = list_registry(self.search.text())
+        if not rows:
+            QMessageBox.information(self, "Nessun dato", "Non ci sono record da esportare.")
+            return
         path, _ = QFileDialog.getSaveFileName(self, "Salva CSV", "risultati.csv", "CSV (*.csv)")
         if not path:
             return
