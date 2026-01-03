@@ -17,8 +17,8 @@ from export_utils import export_rows_to_csv
 from update_check import check_update_and_download
 from version import __version__
 
-YES_NO_NS = ["-", "Sì", "No", "Non so"]
-YES_NO = ["-", 'Sì', 'No']
+YES_NO_NS = ["-", "Sì", "No", "Non so", "Caregiver adulto non presente"]
+YES_NO = ["-", 'Sì', 'No', "Caregiver adulto non presente"]
 VILLAGGI = ["-", "Befandefa", "Andavadoaka"]
 SESSI = ["-", "Maschio", "Femmina"]
 
@@ -841,7 +841,7 @@ class RegistryForm(QWidget):
 
         labels = {
             "taratassi": "N° Taratassi",
-            "village": "Village",
+            "village": "Villaggio",
             "consent": "Spiegazione consenso informato",
             "witnessed": "Consenso orale con testimone",
             "declared_age": "Età in mesi dichiarata",
