@@ -1,4 +1,5 @@
-/questionario.sqlite3
+questionario.sqlite3
+data/**
 Questionario.spec
 build/*
 dist/*

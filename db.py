@@ -66,9 +66,10 @@ def init_db():
                 eta_mesi_dichiarata INTEGER NOT NULL CHECK (eta_mesi_dichiarata >= 0),
                 eta_mesi_stimata INTEGER NOT NULL CHECK (eta_mesi_stimata >= 0),
                 sesso TEXT NOT NULL CHECK (sesso IN ('Maschio','Femmina')),
-                muac_cm REAL,
-                peso REAL,
-                altezza REAL,
+                muac_cm REAL NOT NULL,
+                peso REAL NOT NULL,
+                altezza REAL NOT NULL,
+                wmz REAL,
                 q1 TEXT NOT NULL CHECK (q1 IN ('Sì','No','Non so')),
                 q2 TEXT NOT NULL CHECK (q2 IN ('Sì','No','Non so')),
                 q3 TEXT NOT NULL CHECK (q3 IN ('Sì','No','Non so')),
@@ -86,11 +87,11 @@ def insert_registro(data: dict):
             """
             INSERT INTO registro (
               taratassi, villaggio, consenso_informato, consenso_orale_testimone,
-              eta_mesi_dichiarata, eta_mesi_stimata, sesso, muac_cm, peso, altezza,
+              eta_mesi_dichiarata, eta_mesi_stimata, sesso, muac_cm, peso, altezza, wmz,
               q1, q2, q3, q4, q5
             ) VALUES (
               :taratassi, :villaggio, :consenso_informato, :consenso_orale_testimone,
-              :eta_mesi_dichiarata, :eta_mesi_stimata, :sesso, :muac_cm, :peso, :altezza,
+              :eta_mesi_dichiarata, :eta_mesi_stimata, :sesso, :muac_cm, :peso, :altezza, :wmz
               :q1, :q2, :q3, :q4, :q5
             )
             """,
@@ -135,6 +136,7 @@ def update_registro(taratassi: str, data: dict):
               muac_cm = :muac_cm,
               peso = :peso,
               altezza = :altezza,
+              wmz = :wmz,
               q1 = :q1, q2 = :q2, q3 = :q3, q4 = :q4, q5 = :q5
             WHERE taratassi = :taratassi
             """,
