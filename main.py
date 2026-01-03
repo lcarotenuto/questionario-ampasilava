@@ -576,8 +576,6 @@ class RegistryForm(QWidget):
     def _get_age(self) -> int:
         dichiarata = int(self.declared_age.value())
         stimata = int(self.age_estimation.value())
-        if abs(dichiarata - stimata) > 3:
-            return stimata
         return dichiarata
 
     def _get_quantized_height(self) -> float:
