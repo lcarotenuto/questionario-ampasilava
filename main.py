@@ -606,13 +606,17 @@ class RegistryForm(QWidget):
         return vals[0], vals[1], vals[2]
 
     def _update_whz_status(self):
-        text = (self.whz.text() or "").strip()
-        try:
-            v = float(text.replace(",", "."))
-        except ValueError:
-            self.whz_status.setText("")
-            self.whz_status.setStyleSheet("")
-            return
+        muac = self.muac.value()
+        if muac <= 11.5:
+            v = -4.0
+        else:
+            text = (self.whz.text() or "").strip()
+            try:
+                v = float(text.replace(",", "."))
+            except ValueError:
+                self.whz_status.setText("")
+                self.whz_status.setStyleSheet("")
+                return
 
 
         color = 'inherit'
@@ -711,6 +715,7 @@ class RegistryForm(QWidget):
         self.muac.setRange(0, 1000)
         self.muac.setDecimals(2)
         self.muac.setSingleStep(0.1)
+        self.muac.editingFinished.connect(self._update_whz_status)
         lay.addLayout(self._row("Circonferenza braccio in cm (MUAC)", self.muac))
 
         self.weight = QDoubleSpinBox()

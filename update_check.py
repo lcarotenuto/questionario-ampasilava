@@ -12,14 +12,11 @@ from version import __version__  # es "1.0.0" senza v
 
 LATEST_JSON_URL = "https://lcarotenuto.github.io/questionario-ampasilava/latest.json"
 
-def _parse_version(v: str) -> tuple[int, int, int]:
-    """
-    Accetta '1.2.3' o 'v1.2.3' -> (1,2,3)
-    """
+def _parse_version(v: str) -> tuple[int, ...]:
     v = (v or "").strip()
     m = re.match(r"^v?(\d+)\.(\d+)\.(\d+)$", v)
     if not m:
-        return (0, 0, 0)
+        return 0, 0, 0
     return tuple(map(int, m.groups()))
 
 
