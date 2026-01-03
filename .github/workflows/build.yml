@@ -42,10 +42,6 @@ jobs:
 
           Copy-Item "$DistDir\*" $OutDir -Recurse -Force
 
-          New-Item -ItemType Directory -Path (Join-Path $OutDir "data") | Out-Null
-          $db = Join-Path (Join-Path $OutDir "data") "questionario.sqlite3"
-          if (-not (Test-Path $db)) { New-Item -ItemType File -Path $db | Out-Null }
-
       - name: Zip portable (Windows)
         shell: pwsh
         run: |
@@ -80,21 +76,16 @@ jobs:
         run: |
           OUT_DIR="portable_${APP_NAME}_mac"
           rm -rf "$OUT_DIR"
-          mkdir -p "$OUT_DIR/data"
-          touch "$OUT_DIR/data/questionario.sqlite3"
+          mkdir -p "$OUT_DIR"
 
-          # Trova la .app generata da PyInstaller (può stare in dist/ o dist/<name>/)
+          # Preferisci la .app se esiste, altrimenti copia l'output onedir
           APP_CANDIDATE="$(find dist -maxdepth 3 -type d -name "${APP_NAME}.app" -print -quit)"
-
           if [ -n "$APP_CANDIDATE" ]; then
             echo "Found app bundle: $APP_CANDIDATE"
             cp -R "$APP_CANDIDATE" "$OUT_DIR/${APP_NAME}.app"
           else
-            echo "No .app bundle found, falling back to onedir executable..."
-            # Fallback: dist/<APP_NAME>/<APP_NAME> oppure dist/<APP_NAME>
-            if [ -f "dist/${APP_NAME}/${APP_NAME}" ]; then
-              cp -R "dist/${APP_NAME}" "$OUT_DIR/${APP_NAME}"
-            elif [ -f "dist/${APP_NAME}" ]; then
+            echo "No .app bundle found, falling back to onedir output..."
+            if [ -d "dist/${APP_NAME}" ]; then
               cp -R "dist/${APP_NAME}" "$OUT_DIR/${APP_NAME}"
             else
               echo "ERROR: Could not find build output in dist/"
