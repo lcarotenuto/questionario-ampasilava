@@ -607,6 +607,42 @@ class RegistryForm(QWidget):
             return None, None, None
         return vals[0], vals[1], vals[2]
 
+    def _update_whz_status(self):
+        text = (self.whz.text() or "").strip()
+        try:
+            v = float(text.replace(",", "."))
+        except ValueError:
+            self.whz_status.setText("")
+            self.whz_status.setStyleSheet("")
+            return
+
+
+        color = 'inherit'
+        if v >= -2:
+            txt = "Non Malnutrito"
+            bg_color = "2fb538"
+        elif v >= -3:
+            txt = "Malnutrizione Moderata"
+            color = '000'
+            bg_color = "cedb3b"
+        else:
+            txt = "Malnutrizione Severa"
+            bg_color = "e03d3a"
+
+        style = f"""
+                QLineEdit {{
+                    background-color: #{bg_color};
+                    color: #{color};
+                    font-weight: 600;
+                    border: 1px solid #999;
+                    border-radius: 6px;
+                    padding: 4px;
+                }}
+                """
+
+        self.whz_status.setText(txt)
+        self.whz_status.setStyleSheet(style)
+
     def _update_whz_value(self) -> None:
         try:
             l, m, s = self._get_lms_values()
@@ -618,6 +654,7 @@ class RegistryForm(QWidget):
 
             whz = round(compute_whz(weight, l, m, s), 1)
             self.whz.setText(str(whz))
+            self._update_whz_status()
         except Exception:
             # se height fuori range LMS, ecc.
             self.whz.setText("")
@@ -685,7 +722,24 @@ class RegistryForm(QWidget):
         self.whz = QLineEdit()
         self.whz.setReadOnly(True)
         self.whz.setPlaceholderText("Viene calcolato automaticamente")
-        lay.addLayout(self._row("Indice WHZ", self.whz))
+       # lay.addLayout(self._row("Indice WHZ", self.whz))
+
+        # nuovo campo dinamico
+        self.whz_status = QLineEdit()
+        self.whz_status.setReadOnly(True)
+        self.whz_status.setAlignment(Qt.AlignCenter)
+        self.whz_status.setFixedWidth(220)  # scegli tu
+        self.whz_status.setPlaceholderText("Livello Malnutrizione")
+
+        # container riga: WHZ + Status
+        whz_row_widget = QWidget()
+        whz_row_lay = QHBoxLayout(whz_row_widget)
+        whz_row_lay.setContentsMargins(0, 0, 0, 0)
+        whz_row_lay.setSpacing(10)
+        whz_row_lay.addWidget(self.whz, 1)  # prende spazio
+        whz_row_lay.addWidget(self.whz_status, 0)  # fisso
+
+        lay.addLayout(self._row("Indice WHZ", whz_row_widget))
 
         # Domande (uguali alla creazione)
         self.q1 = QComboBox(); self.q1.addItems(YES_NO_NS)
