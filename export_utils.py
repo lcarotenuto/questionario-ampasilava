@@ -6,8 +6,8 @@ def export_rows_to_csv(rows, filepath: str):
     if not rows:
         # crea comunque il file con header standard
         headers = [
-            "taratassi","villaggio","consenso_informato","consenso_orale_testimone",
-            "eta_mesi_dichiarata", "eta_mesi_stimata", "sesso","muac_cm","peso","altezza","q1","q2","q3","q4","q5","created_at"
+            "taratassi","village","consent","witnessed",
+            "declared_age", "age_estimation", "gender","muac","weight","height","q1","q2","q3","q4","q5","created_at"
         ]
         with path.open("w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)

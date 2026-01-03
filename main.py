@@ -525,9 +525,9 @@ LMS = {
     }
 }
 
-def compute_wmz(y, L, M, S):
+def compute_whz(y, L, M, S):
     if y <= 0 or M <= 0 or S <= 0:
-        raise ValueError("Peso (y), M e S devono essere > 0")
+        raise ValueError("weight (y), M e S devono essere > 0")
     if abs(L) < 1e-12:
         return math.log(y / M) / S
     return ((y / M) ** L - 1.0) / (L * S)
@@ -544,22 +544,22 @@ class FormTab(QWidget):
         self._build()
 
     def _get_age(self):
-        dichiarata = self.eta_mesi_dichiarata.value()
-        stimata = self.eta_mesi_stimata.value()
+        dichiarata = self.declared_age.value()
+        stimata = self.age_estimation.value()
         if abs(dichiarata - stimata) > 3:
             return stimata
         else:
             return dichiarata
 
     def _get_quantized_height(self):
-        d = Decimal(str(self.altezza.value()))
+        d = Decimal(str(self.height.value()))
         return float(d.quantize(Decimal("0.5"), rounding=ROUND_HALF_UP))
 
     def _get_lms_values(self):
         age = self._get_age()
-        sex = self.sesso.currentText()
-        altezza = self._get_quantized_height()
-        if not altezza:
+        sex = self.gender.currentText()
+        height = self._get_quantized_height()
+        if not height:
             return None, None, None
 
         if sex == "Maschio":
@@ -576,16 +576,16 @@ class FormTab(QWidget):
         else:
             return None, None, None
 
-        return LMS[sex_key][age_key][altezza]
+        return LMS[sex_key][age_key][height]
 
-    def _update_wmz_value(self):
+    def _update_whz_value(self):
         l, m, s = self._get_lms_values()
-        peso = self.peso.value()
-        if not l or not m or not s or not peso:
-            self.wmz.setText("")
+        weight = self.weight.value()
+        if not l or not m or not s or not weight:
+            self.whz.setText("")
         else:
-            wmz = round(compute_wmz(peso, l, m, s), 1)
-            self.wmz.setText(str(wmz))
+            whz = round(compute_whz(weight, l, m, s), 1)
+            self.whz.setText(str(whz))
 
     def _build(self):
         lay = QVBoxLayout(self)
@@ -594,36 +594,36 @@ class FormTab(QWidget):
         self.taratassi = QLineEdit()
         lay.addLayout(self._row("N° Taratassi", self.taratassi))
 
-        # Villaggio
-        self.villaggio = QComboBox()
-        self.villaggio.addItems(VILLAGGI)
-        lay.addLayout(self._row("Villaggio screening", self.villaggio))
+        # village
+        self.village = QComboBox()
+        self.village.addItems(VILLAGGI)
+        lay.addLayout(self._row("village screening", self.village))
 
         # Consensi
-        self.consenso_informato = QCheckBox("Sì")
-        self.consenso_orale_testimone = QCheckBox("Sì")
+        self.consent = QCheckBox("Sì")
+        self.witnessed = QCheckBox("Sì")
         lay.addWidget(QLabel("Spiegazione consenso informato"))
-        lay.addWidget(self.consenso_informato)
+        lay.addWidget(self.consent)
         lay.addWidget(QLabel("Consenso orale con testimone"))
-        lay.addWidget(self.consenso_orale_testimone)
+        lay.addWidget(self.witnessed)
 
         # Età mesi dichiarata
-        self.eta_mesi_dichiarata = QSpinBox()
-        self.eta_mesi_dichiarata.setRange(0, 2400)
-        self.eta_mesi_dichiarata.editingFinished.connect(self._update_wmz_value)
-        lay.addLayout(self._row("Età in mesi dichiarata", self.eta_mesi_dichiarata))
+        self.declared_age = QSpinBox()
+        self.declared_age.setRange(0, 2400)
+        self.declared_age.editingFinished.connect(self._update_whz_value)
+        lay.addLayout(self._row("Età in mesi dichiarata", self.declared_age))
 
         # Età mesi stimata
-        self.eta_mesi_stimata = QSpinBox()
-        self.eta_mesi_stimata.setRange(0, 2400)
-        self.eta_mesi_stimata.editingFinished.connect(self._update_wmz_value)
-        lay.addLayout(self._row("Età in mesi stimata", self.eta_mesi_stimata))
+        self.age_estimation = QSpinBox()
+        self.age_estimation.setRange(0, 2400)
+        self.age_estimation.editingFinished.connect(self._update_whz_value)
+        lay.addLayout(self._row("Età in mesi stimata", self.age_estimation))
 
-        # Sesso
-        self.sesso = QComboBox()
-        self.sesso.addItems(SESSI)
-        self.sesso.currentIndexChanged.connect(self._update_wmz_value)
-        lay.addLayout(self._row("Sesso", self.sesso))
+        # gender
+        self.gender = QComboBox()
+        self.gender.addItems(SESSI)
+        self.gender.currentIndexChanged.connect(self._update_whz_value)
+        lay.addLayout(self._row("gender", self.gender))
 
         # Misure
         self.muac = QDoubleSpinBox()
@@ -632,24 +632,24 @@ class FormTab(QWidget):
         self.muac.setSingleStep(0.1)
         lay.addLayout(self._row("Circonferenza braccio (MUAC) cm", self.muac))
 
-        self.peso = QDoubleSpinBox()
-        self.peso.setRange(0, 1000)
-        self.peso.setDecimals(2)
-        self.peso.setSingleStep(0.1)
-        self.peso.editingFinished.connect(self._update_wmz_value)
-        lay.addLayout(self._row("Peso (Kg)", self.peso))
+        self.weight = QDoubleSpinBox()
+        self.weight.setRange(0, 1000)
+        self.weight.setDecimals(2)
+        self.weight.setSingleStep(0.1)
+        self.weight.editingFinished.connect(self._update_whz_value)
+        lay.addLayout(self._row("weight (Kg)", self.weight))
 
-        self.altezza = QDoubleSpinBox()
-        self.altezza.setRange(0, 300)
-        self.altezza.setDecimals(0)
-        self.altezza.setSingleStep(0.1)
-        self.altezza.editingFinished.connect(self._update_wmz_value)
-        lay.addLayout(self._row("Altezza (cm)", self.altezza))
+        self.height = QDoubleSpinBox()
+        self.height.setRange(0, 300)
+        self.height.setDecimals(0)
+        self.height.setSingleStep(0.1)
+        self.height.editingFinished.connect(self._update_whz_value)
+        lay.addLayout(self._row("height (cm)", self.height))
 
-        self.wmz = QLineEdit()
-        self.wmz.setReadOnly(True)
-        self.wmz.setPlaceholderText('Viene calcolato automaticamente')
-        lay.addLayout(self._row("WMZ", self.wmz))
+        self.whz = QLineEdit()
+        self.whz.setReadOnly(True)
+        self.whz.setPlaceholderText('Viene calcolato automaticamente')
+        lay.addLayout(self._row("WHZ", self.whz))
 
         # Domande
         self.q1 = QComboBox(); self.q1.addItems(YES_NO_NS)
@@ -685,15 +685,15 @@ class FormTab(QWidget):
 
     def _clear(self):
         self.taratassi.setText("")
-        self.villaggio.setCurrentIndex(0)
-        self.consenso_informato.setChecked(False)
-        self.consenso_orale_testimone.setChecked(False)
-        self.eta_mesi_dichiarata.setValue(0)
-        self.eta_mesi_stimata.setValue(0)
-        self.sesso.setCurrentIndex(0)
+        self.village.setCurrentIndex(0)
+        self.consent.setChecked(False)
+        self.witnessed.setChecked(False)
+        self.declared_age.setValue(0)
+        self.age_estimation.setValue(0)
+        self.gender.setCurrentIndex(0)
         self.muac.setValue(0)
-        self.peso.setValue(0)
-        self.altezza.setValue(0)
+        self.weight.setValue(0)
+        self.height.setValue(0)
         self.q1.setCurrentIndex(0)
         self.q2.setCurrentIndex(0)
         self.q3.setCurrentIndex(0)
@@ -708,15 +708,16 @@ class FormTab(QWidget):
 
         data = {
             "taratassi": tar,
-            "villaggio": self.villaggio.currentText(),
-            "consenso_informato": bool_to_int(self.consenso_informato.isChecked()),
-            "consenso_orale_testimone": bool_to_int(self.consenso_orale_testimone.isChecked()),
-            "eta_mesi_dichiarata": int(self.eta_mesi_dichiarata.value()),
-            "eta_mesi_stimata": int(self.eta_mesi_stimata.value()),
-            "sesso": self.sesso.currentText(),
-            "muac_cm": float(self.muac.value()) if self.muac.value() != 0 else None,
-            "peso": float(self.peso.value()) if self.peso.value() != 0 else None,
-            "altezza": float(self.altezza.value()) if self.altezza.value() != 0 else None,
+            "village": self.village.currentText(),
+            "consent": bool_to_int(self.consent.isChecked()),
+            "witnessed": bool_to_int(self.witnessed.isChecked()),
+            "declared_age": int(self.declared_age.value()),
+            "age_estimation": int(self.age_estimation.value()),
+            "gender": self.gender.currentText(),
+            "muac": float(self.muac.value()) if self.muac.value() != 0 else None,
+            "weight": float(self.weight.value()) if self.weight.value() != 0 else None,
+            "height": float(self.height.value()) if self.height.value() != 0 else None,
+            "whz": float(self.whz.text()) if self.whz.text() else None,
             "q1": self.q1.currentText(),
             "q2": self.q2.currentText(),
             "q3": self.q3.currentText(),
@@ -761,37 +762,37 @@ class EditDialog(QDialog):
         self.taratassi.setReadOnly(True)
         lay.addLayout(self._row("N° Taratassi", self.taratassi))
 
-        self.villaggio = QComboBox(); self.villaggio.addItems(VILLAGGI)
-        lay.addLayout(self._row("Villaggio screening", self.villaggio))
+        self.village = QComboBox(); self.village.addItems(VILLAGGI)
+        lay.addLayout(self._row("village screening", self.village))
 
-        self.consenso_informato = QCheckBox("Sì (spuntato = Sì)")
-        self.consenso_orale_testimone = QCheckBox("Sì (spuntato = Sì)")
+        self.consent = QCheckBox("Sì (spuntato = Sì)")
+        self.witnessed = QCheckBox("Sì (spuntato = Sì)")
         lay.addWidget(QLabel("Spiegazione consenso informato (Sì/No)"))
-        lay.addWidget(self.consenso_informato)
+        lay.addWidget(self.consent)
         lay.addWidget(QLabel("Consenso orale con testimone (Sì/No)"))
-        lay.addWidget(self.consenso_orale_testimone)
+        lay.addWidget(self.witnessed)
 
         # Età mesi dichiarata
-        self.eta_mesi_dichiarata = QSpinBox()
-        self.eta_mesi_dichiarata.setRange(0, 2400)
-        lay.addLayout(self._row("Età in mesi dichiarata", self.eta_mesi_dichiarata))
+        self.declared_age = QSpinBox()
+        self.declared_age.setRange(0, 2400)
+        lay.addLayout(self._row("Età in mesi dichiarata", self.declared_age))
 
         # Età mesi stimata
-        self.eta_mesi_stimata = QSpinBox()
-        self.eta_mesi_stimata.setRange(0, 2400)
-        lay.addLayout(self._row("Età in mesi stimata", self.eta_mesi_stimata))
+        self.age_estimation = QSpinBox()
+        self.age_estimation.setRange(0, 2400)
+        lay.addLayout(self._row("Età in mesi stimata", self.age_estimation))
 
-        self.sesso = QComboBox(); self.sesso.addItems(SESSI)
-        lay.addLayout(self._row("Sesso", self.sesso))
+        self.gender = QComboBox(); self.gender.addItems(SESSI)
+        lay.addLayout(self._row("gender", self.gender))
 
         self.muac = QDoubleSpinBox(); self.muac.setRange(0, 1000); self.muac.setDecimals(2); self.muac.setSingleStep(0.1)
         lay.addLayout(self._row("Circonferenza braccio (MUAC) cm", self.muac))
 
-        self.peso = QDoubleSpinBox(); self.peso.setRange(0, 1000); self.peso.setDecimals(2); self.peso.setSingleStep(0.1)
-        lay.addLayout(self._row("Peso", self.peso))
+        self.weight = QDoubleSpinBox(); self.weight.setRange(0, 1000); self.weight.setDecimals(2); self.weight.setSingleStep(0.1)
+        lay.addLayout(self._row("weight", self.weight))
 
-        self.altezza = QDoubleSpinBox(); self.altezza.setRange(0, 300); self.altezza.setDecimals(2); self.altezza.setSingleStep(0.1)
-        lay.addLayout(self._row("Altezza", self.altezza))
+        self.height = QDoubleSpinBox(); self.height.setRange(0, 300); self.height.setDecimals(2); self.height.setSingleStep(0.1)
+        lay.addLayout(self._row("height", self.height))
 
         self.q1 = QComboBox(); self.q1.addItems(YES_NO_NS)
         self.q2 = QComboBox(); self.q2.addItems(YES_NO_NS)
@@ -829,15 +830,15 @@ class EditDialog(QDialog):
             return
 
         self.taratassi.setText(row["taratassi"])
-        self.villaggio.setCurrentText(row["villaggio"])
-        self.consenso_informato.setChecked(row["consenso_informato"] == 1)
-        self.consenso_orale_testimone.setChecked(row["consenso_orale_testimone"] == 1)
-        self.eta_mesi_dichiarata.setValue(int(row["eta_mesi_dichiarata"] or 0))
-        self.eta_mesi_stimata.setValue(int(row["eta_mesi_dichiarata"] or 0))
-        self.sesso.setCurrentText(row["sesso"])
-        self.muac.setValue(float(row["muac_cm"] or 0))
-        self.peso.setValue(float(row["peso"] or 0))
-        self.altezza.setValue(float(row["altezza"] or 0))
+        self.village.setCurrentText(row["village"])
+        self.consent.setChecked(row["consent"] == 1)
+        self.witnessed.setChecked(row["witnessed"] == 1)
+        self.declared_age.setValue(int(row["declared_age"] or 0))
+        self.age_estimation.setValue(int(row["declared_age"] or 0))
+        self.gender.setCurrentText(row["gender"])
+        self.muac.setValue(float(row["muac"] or 0))
+        self.weight.setValue(float(row["weight"] or 0))
+        self.height.setValue(float(row["height"] or 0))
         self.q1.setCurrentText(row["q1"])
         self.q2.setCurrentText(row["q2"])
         self.q3.setCurrentText(row["q3"])
@@ -846,15 +847,15 @@ class EditDialog(QDialog):
 
     def _save(self):
         data = {
-            "villaggio": self.villaggio.currentText(),
-            "consenso_informato": 1 if self.consenso_informato.isChecked() else 0,
-            "consenso_orale_testimone": 1 if self.consenso_orale_testimone.isChecked() else 0,
-            "eta_mesi_dichiarata": int(self.eta_mesi_dichiarata.value()),
-            "eta_mesi_stimata": int(self.eta_mesi_stimata.value()),
-            "sesso": self.sesso.currentText(),
-            "muac_cm": float(self.muac.value()) if self.muac.value() != 0 else None,
-            "peso": float(self.peso.value()) if self.peso.value() != 0 else None,
-            "altezza": float(self.altezza.value()) if self.altezza.value() != 0 else None,
+            "village": self.village.currentText(),
+            "consent": 1 if self.consent.isChecked() else 0,
+            "witnessed": 1 if self.witnessed.isChecked() else 0,
+            "declared_age": int(self.declared_age.value()),
+            "age_estimation": int(self.age_estimation.value()),
+            "gender": self.gender.currentText(),
+            "muac": float(self.muac.value()) if self.muac.value() != 0 else None,
+            "weight": float(self.weight.value()) if self.weight.value() != 0 else None,
+            "height": float(self.height.value()) if self.height.value() != 0 else None,
             "q1": self.q1.currentText(),
             "q2": self.q2.currentText(),
             "q3": self.q3.currentText(),
@@ -907,22 +908,26 @@ class ResultsTab(QWidget):
         self._fill(rows)
 
     def _fill(self, rows):
-        headers = [
-            "taratassi", "villaggio", "eta_mesi_dichiarata", "eta_mesi_stimata", "sesso",
-            "muac_cm", "peso", "altezza",
-            "consenso_informato", "consenso_orale_testimone",
+        db_headers = [
+            "taratassi", "village", "declared_age", "age_estimation", "gender",
+            "muac", "weight", "height", "whz",
             "q1","q2","q3","q4","q5",
             "created_at"
         ]
-        self.table.setColumnCount(len(headers))
-        self.table.setHorizontalHeaderLabels(headers)
+        header_labels = [
+            "Taratassi", "Village", "Età dichiarata", "Età stimata", "Sesso",
+            "MUAC", "Peso", "Altezza", "WHZ",
+            "Domanda 1", "Domanda 2", "Domanda 3", "Domanda 4", "Domanda 5",
+            "Data creazione"
+        ]
+        self.table.setColumnCount(len(db_headers))
+        self.table.setHorizontalHeaderLabels(header_labels)
         self.table.setRowCount(len(rows))
 
         for r_i, r in enumerate(rows):
-            for c_i, h in enumerate(headers):
+            for c_i, h in enumerate(db_headers):
                 v = r[h]
-                if h in ("consenso_informato", "consenso_orale_testimone"):
-                    v = "Sì" if v == 1 else "No"
+
                 item = QTableWidgetItem("" if v is None else str(v))
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # sola lettura
                 self.table.setItem(r_i, c_i, item)

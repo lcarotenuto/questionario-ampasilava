@@ -62,16 +62,16 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS registro (
                 taratassi TEXT PRIMARY KEY,
-                villaggio TEXT NOT NULL CHECK (villaggio IN ('Andavadoaka','Befandefa')),
-                consenso_informato INTEGER NOT NULL CHECK (consenso_informato IN (0,1)),
-                consenso_orale_testimone INTEGER NOT NULL CHECK (consenso_orale_testimone IN (0,1)),
-                eta_mesi_dichiarata INTEGER NOT NULL CHECK (eta_mesi_dichiarata >= 0),
-                eta_mesi_stimata INTEGER NOT NULL CHECK (eta_mesi_stimata >= 0),
-                sesso TEXT NOT NULL CHECK (sesso IN ('Maschio','Femmina')),
-                muac_cm REAL NOT NULL,
-                peso REAL NOT NULL,
-                altezza REAL NOT NULL,
-                wmz REAL,
+                village TEXT NOT NULL CHECK (village IN ('Andavadoaka','Befandefa')),
+                consent INTEGER NOT NULL CHECK (consent IN (0,1)),
+                witnessed INTEGER NOT NULL CHECK (witnessed IN (0,1)),
+                declared_age INTEGER NOT NULL CHECK (declared_age >= 0),
+                age_estimation INTEGER NOT NULL CHECK (age_estimation >= 0),
+                gender TEXT NOT NULL CHECK (gender IN ('Maschio','Femmina')),
+                muac REAL NOT NULL,
+                weight REAL NOT NULL,
+                height REAL NOT NULL,
+                whz REAL,
                 q1 TEXT NOT NULL CHECK (q1 IN ('Sì','No','Non so')),
                 q2 TEXT NOT NULL CHECK (q2 IN ('Sì','No','Non so')),
                 q3 TEXT NOT NULL CHECK (q3 IN ('Sì','No','Non so')),
@@ -88,12 +88,12 @@ def insert_registro(data: dict):
         conn.execute(
             """
             INSERT INTO registro (
-              taratassi, villaggio, consenso_informato, consenso_orale_testimone,
-              eta_mesi_dichiarata, eta_mesi_stimata, sesso, muac_cm, peso, altezza, wmz,
+              taratassi, village, consent, witnessed,
+              declared_age, age_estimation, gender, muac, weight, height, whz,
               q1, q2, q3, q4, q5
             ) VALUES (
-              :taratassi, :villaggio, :consenso_informato, :consenso_orale_testimone,
-              :eta_mesi_dichiarata, :eta_mesi_stimata, :sesso, :muac_cm, :peso, :altezza, :wmz
+              :taratassi, :village, :consent, :witnessed,
+              :declared_age, :age_estimation, :gender, :muac, :weight, :height, :whz,
               :q1, :q2, :q3, :q4, :q5
             )
             """,
@@ -129,16 +129,16 @@ def update_registro(taratassi: str, data: dict):
         conn.execute(
             """
             UPDATE registro SET
-              villaggio = :villaggio,
-              consenso_informato = :consenso_informato,
-              consenso_orale_testimone = :consenso_orale_testimone,
-              eta_mesi_dichiarata = :eta_mesi_dichiarata,
-              eta_mesi_stimata = :eta_mesi_stimata,
-              sesso = :sesso,
-              muac_cm = :muac_cm,
-              peso = :peso,
-              altezza = :altezza,
-              wmz = :wmz,
+              village = :village,
+              consent = :consent,
+              witnessed = :witnessed,
+              declared_age = :declared_age,
+              age_estimation = :age_estimation,
+              gender = :gender,
+              muac = :muac,
+              weight = :weight,
+              height = :height,
+              whz = :whz,
               q1 = :q1, q2 = :q2, q3 = :q3, q4 = :q4, q5 = :q5
             WHERE taratassi = :taratassi
             """,
