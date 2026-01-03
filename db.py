@@ -60,7 +60,7 @@ def init_db():
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS registro (
+            CREATE TABLE IF NOT EXISTS registry (
                 taratassi TEXT PRIMARY KEY UNIQUE,
                 village TEXT NOT NULL CHECK (village IN ('Andavadoaka','Befandefa')),
                 consent INTEGER NOT NULL CHECK (consent IN (0,1)),
@@ -83,11 +83,11 @@ def init_db():
         )
 
 
-def insert_registro(data: dict):
+def insert_registry(data: dict):
     with get_conn() as conn:
         conn.execute(
             """
-            INSERT INTO registro (
+            INSERT INTO registry (
               taratassi, village, consent, witnessed,
               declared_age, age_estimation, gender, muac, weight, height, whz,
               q1, q2, q3, q4, q5
@@ -101,10 +101,10 @@ def insert_registro(data: dict):
         )
 
 
-def list_registro(search: str = ""):
+def list_registry(search: str = ""):
     q = """
     SELECT *
-    FROM registro
+    FROM registry
     WHERE taratassi LIKE ?
     ORDER BY created_at DESC
     """
@@ -113,22 +113,22 @@ def list_registro(search: str = ""):
         return conn.execute(q, (like,)).fetchall()
 
 
-def get_registro(taratassi: str):
+def get_registry(taratassi: str):
     with get_conn() as conn:
         return dict(conn.execute(
-            "SELECT * FROM registro WHERE taratassi = ?",
+            "SELECT * FROM registry WHERE taratassi = ?",
             (taratassi,),
         ).fetchone())
 
 
-def update_registro(taratassi: str, data: dict):
+def update_registry(taratassi: str, data: dict):
     # taratassi resta chiave primaria e NON viene modificato
     data = dict(data)
     data["taratassi"] = taratassi
     with get_conn() as conn:
         conn.execute(
             """
-            UPDATE registro SET
+            UPDATE registry SET
               village = :village,
               consent = :consent,
               witnessed = :witnessed,

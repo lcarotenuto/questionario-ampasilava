@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from db import init_db, insert_registro, list_registro, get_registro, update_registro
+from db import init_db, insert_registry, list_registry, get_registry, update_registry
 from export_utils import export_rows_to_csv
 
 
@@ -539,7 +539,7 @@ def bool_to_int(v: bool) -> int:
     return 1 if v else 0
 
 
-class RegistroForm(QWidget):
+class RegistryForm(QWidget):
     """
     Widget riusabile: stessa UI per creazione e modifica.
     Contiene:
@@ -629,7 +629,7 @@ class RegistroForm(QWidget):
         # village
         self.village = QComboBox()
         self.village.addItems(VILLAGGI)
-        lay.addLayout(self._row("village screening", self.village))
+        lay.addLayout(self._row("Villaggio", self.village))
 
         # Consensi
         self.consent = QCheckBox("Sì")
@@ -655,33 +655,33 @@ class RegistroForm(QWidget):
         self.gender = QComboBox()
         self.gender.addItems(SESSI)
         self.gender.currentIndexChanged.connect(self._update_whz_value)
-        lay.addLayout(self._row("gender", self.gender))
+        lay.addLayout(self._row("Sesso", self.gender))
 
         # Misure
         self.muac = QDoubleSpinBox()
         self.muac.setRange(0, 1000)
         self.muac.setDecimals(2)
         self.muac.setSingleStep(0.1)
-        lay.addLayout(self._row("Circonferenza braccio (MUAC) cm", self.muac))
+        lay.addLayout(self._row("Circonferenza braccio in cm (MUAC)", self.muac))
 
         self.weight = QDoubleSpinBox()
         self.weight.setRange(0, 1000)
         self.weight.setDecimals(2)
         self.weight.setSingleStep(0.1)
         self.weight.editingFinished.connect(self._update_whz_value)
-        lay.addLayout(self._row("weight (Kg)", self.weight))
+        lay.addLayout(self._row("Peso (Kg)", self.weight))
 
         self.height = QDoubleSpinBox()
         self.height.setRange(0, 300)
-        self.height.setDecimals(0)   # uguale alla creazione
-        self.height.setSingleStep(0.1)
+        self.height.setDecimals(1)   # uguale alla creazione
+        self.height.setSingleStep(0.5)
         self.height.editingFinished.connect(self._update_whz_value)
-        lay.addLayout(self._row("height (cm)", self.height))
+        lay.addLayout(self._row("Altezza (cm)", self.height))
 
         self.whz = QLineEdit()
         self.whz.setReadOnly(True)
         self.whz.setPlaceholderText("Viene calcolato automaticamente")
-        lay.addLayout(self._row("WHZ", self.whz))
+        lay.addLayout(self._row("Indice WHZ", self.whz))
 
         # Domande (uguali alla creazione)
         self.q1 = QComboBox(); self.q1.addItems(YES_NO_NS)
@@ -831,7 +831,7 @@ class FormTab(QWidget):
         lay = QVBoxLayout(self)
 
         # form riusabile
-        self.form = RegistroForm(taratassi_readonly=False)
+        self.form = RegistryForm(taratassi_readonly=False)
         lay.addWidget(self.form, 1)
 
         # Pulsanti
@@ -853,7 +853,7 @@ class FormTab(QWidget):
             return
 
         try:
-            insert_registro(data)
+            insert_registry(data)
         except sqlite3.IntegrityError:
             QMessageBox.critical(self, "Errore salvataggio", "N° Taratassi già esistente.")
             return
@@ -878,7 +878,7 @@ class EditDialog(QDialog):
         lay = QVBoxLayout(self)
 
         # stesso form della creazione, ma taratassi in sola lettura
-        self.form = RegistroForm(taratassi_readonly=True, parent=self)
+        self.form = RegistryForm(taratassi_readonly=True, parent=self)
         lay.addWidget(self.form, 1)
 
         btns = QHBoxLayout()
@@ -892,7 +892,7 @@ class EditDialog(QDialog):
         self.cancel_btn.clicked.connect(self.reject)
 
     def _load(self):
-        row = get_registro(self.taratassi_value)
+        row = get_registry(self.taratassi_value)
         if not row:
             QMessageBox.critical(self, "Errore", "Record non trovato.")
             self.reject()
@@ -913,7 +913,7 @@ class EditDialog(QDialog):
         data.pop("taratassi", None)
 
         try:
-            update_registro(self.taratassi_value, data)
+            update_registry(self.taratassi_value, data)
         except Exception as e:
             QMessageBox.critical(self, "Errore salvataggio", str(e))
             return
@@ -953,7 +953,7 @@ class ResultsTab(QWidget):
         self.table.cellDoubleClicked.connect(self.edit_selected)
 
     def refresh(self):
-        rows = list_registro(self.search.text())
+        rows = list_registry(self.search.text())
         self._fill(rows)
 
     def _fill(self, rows):
@@ -964,7 +964,7 @@ class ResultsTab(QWidget):
             "created_at"
         ]
         header_labels = [
-            "Taratassi", "Village", "Età dichiarata", "Età stimata", "Sesso",
+            "Taratassi", "Villaggio", "Età dichiarata", "Età stimata", "Sesso",
             "MUAC", "Peso", "Altezza", "WHZ",
             "Domanda 1", "Domanda 2", "Domanda 3", "Domanda 4", "Domanda 5",
             "Data creazione"
@@ -984,7 +984,7 @@ class ResultsTab(QWidget):
         self.table.resizeColumnsToContents()
 
     def export_csv(self):
-        rows = list_registro(self.search.text())
+        rows = list_registry(self.search.text())
         path, _ = QFileDialog.getSaveFileName(self, "Salva CSV", "risultati.csv", "CSV (*.csv)")
         if not path:
             return
