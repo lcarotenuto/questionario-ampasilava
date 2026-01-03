@@ -1,16 +1,16 @@
 import json
 import platform
 import re
+import ssl
 from pathlib import Path
-from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
+from urllib.request import Request, urlopen
+
+import certifi
 
 from version import __version__  # es "1.0.0" senza v
 
-
-# TODO: metti l'URL reale della tua GitHub Pages
 LATEST_JSON_URL = "https://lcarotenuto.github.io/questionario-ampasilava/latest.json"
-
 
 def _parse_version(v: str) -> tuple[int, int, int]:
     """
@@ -36,8 +36,10 @@ def _fetch_latest_json() -> dict:
             "Cache-Control": "no-cache",
         },
     )
+    ctx = ssl.create_default_context(cafile=certifi.where())
+
     try:
-        with urlopen(req, timeout=20) as resp:
+        with urlopen(req, timeout=20, context=ctx) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except HTTPError as e:
         raise RuntimeError(f"Errore HTTP {e.code} scaricando latest.json: {LATEST_JSON_URL}") from e
