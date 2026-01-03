@@ -8,9 +8,9 @@ BOOLEAN_FIELDS = {"consent", "witnessed"}
 def csv_value(value, field_name=None):
     if field_name in BOOLEAN_FIELDS:
         if value == 1:
-            return "Sì"
+            return "SI"
         if value == 0:
-            return "No"
+            return "NO"
         return ""
     return "" if value is None else value
 
