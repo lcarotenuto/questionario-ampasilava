@@ -1,7 +1,12 @@
-name: Build portable apps
+name: Build & Release
 
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"   # es: v1.0.0
+
+permissions:
+  contents: write
 
 env:
   APP_NAME: Questionario
@@ -21,19 +26,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Build (PyInstaller onedir)
+      - name: Build executable (Windows)
         run: |
           pyinstaller --noconsole --onedir --name $env:APP_NAME main.py
 
-      - name: Create portable folder (with data/)
+      - name: Create portable folder
         shell: pwsh
         run: |
           $AppName = "$env:APP_NAME"
           $OutDir = "portable_${AppName}_win"
           $DistDir = "dist\$AppName"
+
           if (Test-Path $OutDir) { Remove-Item $OutDir -Recurse -Force }
           New-Item -ItemType Directory -Path $OutDir | Out-Null
+
           Copy-Item "$DistDir\*" $OutDir -Recurse -Force
+
           New-Item -ItemType Directory -Path (Join-Path $OutDir "data") | Out-Null
           $db = Join-Path (Join-Path $OutDir "data") "questionario.sqlite3"
           if (-not (Test-Path $db)) { New-Item -ItemType File -Path $db | Out-Null }
@@ -41,16 +49,14 @@ jobs:
       - name: Zip portable (Windows)
         shell: pwsh
         run: |
-          $AppName = "$env:APP_NAME"
-          $OutDir = "portable_${AppName}_win"
-          $Zip = "${OutDir}.zip"
+          $Zip = "portable_Questionario_win.zip"
           if (Test-Path $Zip) { Remove-Item $Zip -Force }
-          Compress-Archive -Path "$OutDir\*" -DestinationPath $Zip
+          Compress-Archive -Path "portable_Questionario_win\*" -DestinationPath $Zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: portable-windows
-          path: portable_QuestionarioTaratassi_win.zip
+          name: windows
+          path: portable_Questionario_win.zip
 
   build-macos:
     runs-on: macos-latest
@@ -66,11 +72,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Build (PyInstaller onedir)
+      - name: Build executable (macOS)
         run: |
           pyinstaller --windowed --onedir --name "$APP_NAME" main.py
 
-      - name: Create portable folder (with data/)
+      - name: Create portable folder
         run: |
           OUT_DIR="portable_${APP_NAME}_mac"
           DIST_DIR="dist/${APP_NAME}"
@@ -84,12 +90,26 @@ jobs:
 
       - name: Zip portable (macOS)
         run: |
-          OUT_DIR="portable_${APP_NAME}_mac"
-          ZIP="${OUT_DIR}.zip"
+          ZIP="portable_Questionario_mac.zip"
           rm -f "$ZIP"
-          ditto -c -k --sequesterRsrc --keepParent "$OUT_DIR" "$ZIP"
+          ditto -c -k --sequesterRsrc --keepParent "portable_Questionario_mac" "$ZIP"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: portable-macos
-          path: portable_QuestionarioTaratassi_mac.zip
+          name: macos
+          path: portable_Questionario_mac.zip
+
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/portable_Questionario_win.zip
+            artifacts/**/portable_Questionario_mac.zip
