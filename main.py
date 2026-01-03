@@ -607,7 +607,8 @@ class RegistryForm(QWidget):
 
     def _update_whz_status(self):
         muac = self.muac.value()
-        if muac <= 11.5:
+
+        if muac <= 11.5 and self._get_age() > 6:
             v = -4.0
         else:
             text = (self.whz.text() or "").strip()
@@ -852,7 +853,6 @@ class RegistryForm(QWidget):
             "declared_age": "Età in mesi dichiarata",
             "age_estimation": "Età in mesi stimata",
             "gender": "Sesso",
-            "muac": "MUAC",
             "weight": "Peso",
             "height": "Altezza",
             "whz": "WHZ",
@@ -863,7 +863,7 @@ class RegistryForm(QWidget):
             "taratassi", "village",
             "consent", "witnessed",
             "declared_age", "age_estimation", "gender",
-            "muac", "weight", "height", "whz",
+            "weight", "height", "whz",
             "q1", "q2", "q3", "q4", "q5"
         ]
 
@@ -874,7 +874,7 @@ class RegistryForm(QWidget):
             value = data.get(key)
 
             missing = False
-            if key in ("village", "gender", "q1", "q2", "q3", "q4", "q5"):
+            if key in ("taratassi", "village", "gender", "q1", "q2", "q3", "q4", "q5"):
                 missing = (value is None) or (value == "") or (value == "-")
             elif key in ("consent", "witnessed"):
                 missing = (value != 1)  # devono essere spuntati
@@ -927,7 +927,8 @@ class FormTab(QWidget):
 
         try:
             insert_registry(data)
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as ex:
+            QMessageBox.critical(self, "Errore Salvataggio", str(ex))
             QMessageBox.critical(self, "Errore salvataggio", "N° Taratassi già esistente.")
             return
         except Exception as e:
