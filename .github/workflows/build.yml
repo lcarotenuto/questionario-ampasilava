@@ -1,25 +1,95 @@
-name: build
+name: Build portable apps
 
 on:
   workflow_dispatch:
 
+env:
+  APP_NAME: Questionario
+
 jobs:
-  windows:
+  build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
-      - name: Install deps
+
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Build exe
+
+      - name: Build (PyInstaller onedir)
         run: |
-          pyinstaller --noconsole --onedir --name Questionario main.py
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          pyinstaller --noconsole --onedir --name $env:APP_NAME main.py
+
+      - name: Create portable folder (with data/)
+        shell: pwsh
+        run: |
+          $AppName = "$env:APP_NAME"
+          $OutDir = "portable_${AppName}_win"
+          $DistDir = "dist\$AppName"
+          if (Test-Path $OutDir) { Remove-Item $OutDir -Recurse -Force }
+          New-Item -ItemType Directory -Path $OutDir | Out-Null
+          Copy-Item "$DistDir\*" $OutDir -Recurse -Force
+          New-Item -ItemType Directory -Path (Join-Path $OutDir "data") | Out-Null
+          $db = Join-Path (Join-Path $OutDir "data") "questionario.sqlite3"
+          if (-not (Test-Path $db)) { New-Item -ItemType File -Path $db | Out-Null }
+
+      - name: Zip portable (Windows)
+        shell: pwsh
+        run: |
+          $AppName = "$env:APP_NAME"
+          $OutDir = "portable_${AppName}_win"
+          $Zip = "${OutDir}.zip"
+          if (Test-Path $Zip) { Remove-Item $Zip -Force }
+          Compress-Archive -Path "$OutDir\*" -DestinationPath $Zip
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: Questionario-windows
-          path: dist/Questionario/**
+          name: portable-windows
+          path: portable_QuestionarioTaratassi_win.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build (PyInstaller onedir)
+        run: |
+          pyinstaller --windowed --onedir --name "$APP_NAME" main.py
+
+      - name: Create portable folder (with data/)
+        run: |
+          OUT_DIR="portable_${APP_NAME}_mac"
+          DIST_DIR="dist/${APP_NAME}"
+          APP_PATH="${DIST_DIR}/${APP_NAME}.app"
+
+          rm -rf "$OUT_DIR"
+          mkdir -p "$OUT_DIR/data"
+
+          cp -R "$APP_PATH" "$OUT_DIR/${APP_NAME}.app"
+          touch "$OUT_DIR/data/questionario.sqlite3"
+
+      - name: Zip portable (macOS)
+        run: |
+          OUT_DIR="portable_${APP_NAME}_mac"
+          ZIP="${OUT_DIR}.zip"
+          rm -f "$ZIP"
+          ditto -c -k --sequesterRsrc --keepParent "$OUT_DIR" "$ZIP"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portable-macos
+          path: portable_QuestionarioTaratassi_mac.zip
