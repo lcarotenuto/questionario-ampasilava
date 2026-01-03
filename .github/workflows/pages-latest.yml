@@ -1,0 +1,53 @@
+name: Publish latest.json to GitHub Pages
+
+on:
+  push:
+    tags:
+      - "v*.*.*"   # es: v1.0.0
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate latest.json
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"   # es: v1.2.3
+          VERSION="${TAG#v}"         # es: 1.2.3
+          OWNER="${{ github.repository_owner }}"
+          REPO="$(echo "${{ github.repository }}" | cut -d/ -f2)"
+
+          mkdir -p public
+
+          WIN_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/portable_Questionario_win.zip"
+          MAC_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/portable_Questionario_mac.zip"
+
+          cat > public/latest.json <<EOF
+          {
+            "version": "${VERSION}",
+            "tag": "${TAG}",
+            "assets": {
+              "windows": "${WIN_URL}",
+              "macos": "${MAC_URL}"
+            }
+          }
+          EOF
+
+          cat public/latest.json
+
+      - name: Upload artifact for Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
