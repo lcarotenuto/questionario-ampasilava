@@ -144,3 +144,11 @@ def update_registry(taratassi: str, data: dict):
             """,
             data,
         )
+
+def delete_registry(taratassi: str):
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM registry WHERE taratassi = ?",
+            (taratassi,)
+        )

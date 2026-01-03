@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QPushButton, QMessageBox, QTableWidget, QTableWidgetItem, QFileDialog, QDialog
 )
 
-from db import init_db, insert_registry, list_registry, get_registry, update_registry
+from db import init_db, insert_registry, list_registry, get_registry, update_registry, delete_registry
 from export_utils import export_rows_to_csv
 from update_check import check_update_and_download
 from version import __version__
@@ -623,7 +623,7 @@ class RegistryForm(QWidget):
             bg_color = "2fb538"
         elif v >= -3:
             txt = "Malnutrizione Moderata"
-            color = '000'
+            color = '#000'
             bg_color = "cedb3b"
         else:
             txt = "Malnutrizione Severa"
@@ -632,7 +632,7 @@ class RegistryForm(QWidget):
         style = f"""
                 QLineEdit {{
                     background-color: #{bg_color};
-                    color: #{color};
+                    color: {color};
                     font-weight: 600;
                     border: 1px solid #999;
                     border-radius: 6px;
@@ -784,6 +784,7 @@ class RegistryForm(QWidget):
         self.q4.setCurrentIndex(0)
         self.q5.setCurrentIndex(0)
         self.whz.setText("")
+        self.whz_status.clear()
 
     def get_data(self) -> Dict[str, Any]:
         # Forza ricalcolo WHZ prima di leggere il valore
@@ -1006,6 +1007,9 @@ class ResultsTab(QWidget):
         self.edit_btn = QPushButton("Modifica selezionato")
         top.addWidget(self.edit_btn)
 
+        self.delete_btn = QPushButton("Elimina selezionato")
+        top.addWidget(self.delete_btn)
+
         top.addWidget(self.search, 1)
         top.addWidget(self.refresh_btn)
         top.addWidget(self.export_btn)
@@ -1018,7 +1022,46 @@ class ResultsTab(QWidget):
         self.search.textChanged.connect(self.refresh)
         self.export_btn.clicked.connect(self.export_csv)
         self.edit_btn.clicked.connect(self.edit_selected)
+        self.delete_btn.clicked.connect(self.delete_selected)
         self.table.cellDoubleClicked.connect(self.edit_selected)
+
+    def delete_selected(self):
+        row = self.table.currentRow()
+        if row < 0:
+            QMessageBox.warning(
+                self,
+                "Nessuna selezione",
+                "Seleziona un record da eliminare."
+            )
+            return
+
+        taratassi_item = self.table.item(row, 0)  # colonna 0 = taratassi
+        if not taratassi_item:
+            return
+
+        taratassi = taratassi_item.text()
+
+        confirm = QMessageBox.question(
+            self,
+            "Conferma eliminazione",
+            f"Vuoi eliminare il record con Taratassi:\n\n{taratassi} ?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes
+        )
+
+        if confirm != QMessageBox.Yes:
+            return
+
+        try:
+            delete_registry(taratassi)
+            self.table.removeRow(row)
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Errore",
+                f"Errore durante l'eliminazione:\n{e}"
+            )
 
     def refresh(self):
         rows = list_registry(self.search.text())
