@@ -28,7 +28,7 @@ jobs:
 
       - name: Build executable (Windows)
         run: |
-          pyinstaller --noconsole --onedir --name $env:APP_NAME -icon assets/icon.ico main.py
+          pyinstaller --noconsole --onedir --name $env:APP_NAME --icon assets/icon.ico main.py
 
       - name: Create portable folder
         shell: pwsh
@@ -70,7 +70,7 @@ jobs:
 
       - name: Build executable (macOS)
         run: |
-          pyinstaller --windowed --onedir --name "$APP_NAME" -icon assets/icon.icns main.py
+          pyinstaller --windowed --onedir --name "$APP_NAME" --icon assets/icon.icns main.py
 
       - name: Create portable folder
         run: |
