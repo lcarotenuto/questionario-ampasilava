@@ -2,6 +2,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
+from migrations import migrate_if_needed
 
 APP_DB_FILENAME = "questionario.sqlite3"
 
@@ -55,6 +56,7 @@ def get_conn():
 
 def init_db():
     with get_conn() as conn:
+        migrate_if_needed(conn)
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.execute(
             """
