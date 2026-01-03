@@ -659,12 +659,22 @@ class RegistryForm(QWidget):
             # se height fuori range LMS, ecc.
             self.whz.setText("")
 
+    def _force_uppercase(self, text):
+        widget = self.sender()
+        if widget is None:
+            return
+
+        upper = text.upper()
+        if text != upper:
+            widget.setText(upper)
+
     # ---------- Build UI ----------
     def _build(self) -> None:
         lay = QVBoxLayout(self)
 
         # Taratassi
         self.taratassi = QLineEdit()
+        self.taratassi.textChanged.connect(self._force_uppercase)
         lay.addLayout(self._row("N° Taratassi", self.taratassi))
 
         # village
