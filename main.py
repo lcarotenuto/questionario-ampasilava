@@ -1,24 +1,28 @@
 import math
 import sqlite3
 import sys
+import webbrowser
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, Any, Tuple, Optional
 
+from PySide6.QtCore import Qt, QObject, Signal, Slot, QThread
 from PySide6.QtWidgets import (
     QApplication, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QComboBox, QCheckBox, QDoubleSpinBox, QSpinBox,
     QPushButton, QMessageBox, QTableWidget, QTableWidgetItem, QFileDialog, QDialog
 )
-from PySide6.QtCore import Qt
 
 from db import init_db, insert_registry, list_registry, get_registry, update_registry
 from export_utils import export_rows_to_csv
-
+from update_check import check_update_and_download
+from version import __version__
 
 YES_NO_NS = ["-", "Sì", "No", "Non so"]
 YES_NO = ["-", 'Sì', 'No']
 VILLAGGI = ["-", "Befandefa", "Andavadoaka"]
 SESSI = ["-", "Maschio", "Femmina"]
+
+REPO_URL = "https://github.com/lcarotenuto/questionario-ampasilava"
 
 lms_f_0_2 = {
     45.0:   [-0.3833,  2.4607, 0.09029],
@@ -1014,11 +1018,107 @@ class ResultsTab(QWidget):
         if dlg.exec():
             self.refresh()
 
+class UpdateWorker(QObject):
+    finished = Signal(object)   # Path | None
+    error = Signal(str)
+
+    @Slot()
+    def run(self):
+        try:
+            path = check_update_and_download()
+            self.finished.emit(path)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
+class InfoTab(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        lay = QVBoxLayout(self)
+        lay.setAlignment(Qt.AlignTop)
+        lay.setSpacing(12)
+
+        self.lbl_title = QLabel("<h2>Info</h2>")
+        lay.addWidget(self.lbl_title)
+
+        self.lbl_version = QLabel(f"<b>Versione attuale:</b> v{__version__}")
+        lay.addWidget(self.lbl_version)
+
+        self.lbl_repo = QLabel(f'<b>Repository:</b> <a href="{REPO_URL}">{REPO_URL}</a>')
+        self.lbl_repo.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        self.lbl_repo.setOpenExternalLinks(True)
+        lay.addWidget(self.lbl_repo)
+
+        self.btn_updates = QPushButton("Cerca aggiornamenti")
+        self.btn_updates.clicked.connect(self.on_check_updates)
+        lay.addWidget(self.btn_updates)
+
+        self.lbl_status = QLabel("")
+        lay.addWidget(self.lbl_status)
+
+        lay.addStretch(1)
+
+    def on_check_updates(self):
+        self.btn_updates.setEnabled(False)
+        self.lbl_status.setText("Controllo aggiornamenti... (potrebbero volerci diversi minuti)")
+
+        # Thread per non bloccare la GUI
+        self.thread = QThread(self)
+        self.worker = UpdateWorker()
+        self.worker.moveToThread(self.thread)
+
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.on_update_finished)
+        self.worker.error.connect(self.on_update_error)
+
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.error.connect(self.thread.quit)
+        self.thread.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+
+        self.thread.start()
+
+    def on_update_finished(self, path):
+        self.btn_updates.setEnabled(True)
+        self.lbl_status.setText("")
+
+        if path is None:
+            QMessageBox.information(self, "Aggiornamenti", "Sei già aggiornato ✅")
+            return
+
+        msg = (
+            "Aggiornamento scaricato ✅\n\n"
+            f"File: {path}\n\n"
+            "Per aggiornare:\n"
+            "1) Chiudi l'app\n"
+            "2) Estrai lo zip\n"
+            "3) Sostituisci i file dell'app (NON il database)"
+        )
+        box = QMessageBox(self)
+        box.setWindowTitle("Aggiornamenti")
+        box.setText(msg)
+
+        open_btn = box.addButton("Apri cartella download", QMessageBox.ActionRole)
+        box.addButton("OK", QMessageBox.AcceptRole)
+
+        box.exec()
+
+        if box.clickedButton() == open_btn:
+            # apri cartella contenente lo zip
+            folder = str(path.parent)
+            webbrowser.open(f"file://{folder}")
+
+    def on_update_error(self, err: str):
+        self.btn_updates.setEnabled(True)
+        self.lbl_status.setText("")
+        QMessageBox.critical(self, "Aggiornamenti", f"Errore:\n\n{err}")
 
 class App(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Questionario Taratassi (Offline)")
+        self.version = __version__
+        self.setWindowTitle(f"Questionario Malnutrizione - v{self.version}")
         self.resize(1100, 700)
 
         lay = QVBoxLayout(self)
@@ -1027,9 +1127,11 @@ class App(QWidget):
 
         self.results_tab = ResultsTab()
         self.form_tab = FormTab(on_saved_callback=self.results_tab.refresh)
+        self.info_tab = InfoTab()
 
         self.tabs.addTab(self.form_tab, "Nuova compilazione")
         self.tabs.addTab(self.results_tab, "Risultati")
+        self.tabs.addTab(self.info_tab, "Informazioni")
 
 
 def main():
