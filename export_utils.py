@@ -19,13 +19,13 @@ def export_rows_to_csv(rows, filepath: str):
     path = Path(filepath)
     headers = [
         "taratassi", "village", "consent", "witnessed",
-        "declared_age", "age_estimation", "gender", "muac", "weight", "height", 'whz', "q1", "q2", "q3", "q4", "q5",
+        "declared_age", "age_estimation", "gender", "muac", "weight", "height", 'whz', "q1", "q2", "q3", "q4", "q5", "q6"
         "created_at"
     ]
     header_label = [
         'Taratassi', 'Villaggio', 'Spiegazione consenso informato', 'Consenso orale con testimone',
         'Età Dichiarata', 'Età Stimata', 'Sesso', 'MUAC', 'Peso (KG)', 'Altezza (cm)',
-        'Indice WHZ', 'Domanda 1', 'Domanda 2', 'Domanda 3', 'Domanda 4', 'Domanda 5', 'Data creazione'
+        'Indice WHZ', 'Domanda 1', 'Domanda 2', 'Domanda 3', 'Domanda 4', 'Domanda 5', 'Domanda 6', 'Data creazione'
     ]
 
     with path.open("w", newline="", encoding="utf-8-sig") as f:

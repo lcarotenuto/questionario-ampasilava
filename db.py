@@ -84,17 +84,19 @@ def init_db():
 
 
 def insert_registry(data: dict):
+    if not data['muac']:
+        data['muac'] = 0.0
     with get_conn() as conn:
         conn.execute(
             """
             INSERT INTO registry (
               taratassi, village, consent, witnessed,
               declared_age, age_estimation, gender, muac, weight, height, whz,
-              q1, q2, q3, q4, q5
+              q1, q2, q3, q4, q5, q6
             ) VALUES (
               :taratassi, :village, :consent, :witnessed,
               :declared_age, :age_estimation, :gender, :muac, :weight, :height, :whz,
-              :q1, :q2, :q3, :q4, :q5
+              :q1, :q2, :q3, :q4, :q5, :q6
             )
             """,
             data,
@@ -139,7 +141,7 @@ def update_registry(taratassi: str, data: dict):
               weight = :weight,
               height = :height,
               whz = :whz,
-              q1 = :q1, q2 = :q2, q3 = :q3, q4 = :q4, q5 = :q5
+              q1 = :q1, q2 = :q2, q3 = :q3, q4 = :q4, q5 = :q5, q6 = :q6
             WHERE taratassi = :taratassi
             """,
             data,

@@ -17,8 +17,8 @@ from export_utils import export_rows_to_csv
 from update_check import check_update_and_download
 from version import __version__
 
-YES_NO_NS = ["-", "Sì", "No", "Non so", "Caregiver adulto non presente"]
-YES_NO = ["-", 'Sì', 'No', "Caregiver adulto non presente"]
+YES_NO_NS = ["-", "Sì", "No", "Non so"]
+YES_NO = ["-", 'Sì', 'No']
 VILLAGGI = ["-", "Befandefa", "Andavadoaka"]
 SESSI = ["-", "Maschio", "Femmina"]
 
@@ -660,7 +660,7 @@ class RegistryForm(QWidget):
             self._update_whz_status()
         except Exception:
             # se height fuori range LMS, ecc.
-            self.whz.setText("")
+            self.whz.setText("0")
 
     def _force_uppercase(self, text):
         widget = self.sender()
@@ -688,6 +688,8 @@ class RegistryForm(QWidget):
         # Consensi
         self.consent = QCheckBox("Sì")
         self.witnessed = QCheckBox("Sì")
+        self.consent.setChecked(True)
+        self.witnessed.setChecked(True)
         lay.addWidget(QLabel("Spiegazione consenso informato"))
         lay.addWidget(self.consent)
         lay.addWidget(QLabel("Consenso orale con testimone"))
@@ -717,7 +719,7 @@ class RegistryForm(QWidget):
         self.muac.setDecimals(2)
         self.muac.setSingleStep(0.1)
         self.muac.editingFinished.connect(self._update_whz_status)
-        lay.addLayout(self._row("Circonferenza braccio in cm (MUAC)", self.muac))
+        lay.addLayout(self._row("Circonferenza braccio SX in cm (MUAC)", self.muac))
 
         self.weight = QDoubleSpinBox()
         self.weight.setRange(0, 1000)
@@ -761,12 +763,14 @@ class RegistryForm(QWidget):
         self.q3 = QComboBox(); self.q3.addItems(YES_NO_NS)
         self.q4 = QComboBox(); self.q4.addItems(YES_NO_NS)
         self.q5 = QComboBox(); self.q5.addItems(YES_NO)
+        self.q6 = QComboBox(); self.q6.addItems(YES_NO)
 
         lay.addLayout(self._row("Negli ultimi 7 giorni ha mangiato meno/rifiutato cibo?", self.q1))
         lay.addLayout(self._row("Ieri ha mangiato almeno 3 volte (oltre al latte)?", self.q2))
         lay.addLayout(self._row("Diarrea ultime 2 settimane?", self.q3))
         lay.addLayout(self._row("Febbre ultime 2 settimane?", self.q4))
         lay.addLayout(self._row("Prende ancora latte materno?", self.q5))
+        lay.addLayout(self._row('Presenta edemi declivi?', self.q6))
 
         lay.addStretch(1)
 
@@ -787,6 +791,7 @@ class RegistryForm(QWidget):
         self.q3.setCurrentIndex(0)
         self.q4.setCurrentIndex(0)
         self.q5.setCurrentIndex(0)
+        self.q6.setCurrentIndex(0)
         self.whz.setText("")
         self.whz_status.clear()
         self.whz_status.setStyleSheet('')
@@ -812,6 +817,7 @@ class RegistryForm(QWidget):
             "q3": self.q3.currentText(),
             "q4": self.q4.currentText(),
             "q5": self.q5.currentText(),
+            "q6": self.q5.currentText(),
         }
 
     def set_data(self, row: Dict[str, Any]) -> None:
@@ -834,6 +840,7 @@ class RegistryForm(QWidget):
         self.q3.setCurrentText(row.get("q3", "-") or "-")
         self.q4.setCurrentText(row.get("q4", "-") or "-")
         self.q5.setCurrentText(row.get("q5", "-") or "-")
+        self.q6.setCurrentText(row.get("q6", "-") or "-")
 
         # ricalcola WHZ e, se non calcolabile, mostra quello salvato (se presente)
         self._update_whz_value()
@@ -1076,13 +1083,13 @@ class ResultsTab(QWidget):
         db_headers = [
             "taratassi", "village", "declared_age", "age_estimation", "gender",
             "muac", "weight", "height", "whz",
-            "q1","q2","q3","q4","q5",
+            "q1","q2","q3","q4","q5","q6",
             "created_at"
         ]
         header_labels = [
             "Taratassi", "Villaggio", "Età dichiarata", "Età stimata", "Sesso",
             "MUAC", "Peso", "Altezza", "WHZ",
-            "Domanda 1", "Domanda 2", "Domanda 3", "Domanda 4", "Domanda 5",
+            "Domanda 1", "Domanda 2", "Domanda 3", "Domanda 4", "Domanda 5", "Domanda 6",
             "Data creazione"
         ]
         self.table.setColumnCount(len(db_headers))

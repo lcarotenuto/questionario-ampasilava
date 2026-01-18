@@ -1,7 +1,7 @@
 import sqlite3
 from typing import Callable, Dict
 
-CURRENT_SCHEMA_VERSION = 1  # <-- quando fai modifiche, aumentala a 2, 3, ...
+CURRENT_SCHEMA_VERSION = 2  # <-- quando fai modifiche, aumentala a 2, 3, ...
 
 MigrationFn = Callable[[sqlite3.Connection], None]
 
@@ -31,8 +31,11 @@ def set_db_version(conn: sqlite3.Connection, version: int) -> None:
 
 # --- MIGRAZIONI ---
 
+def migration_1_to_2(conn: sqlite3.Connection):
+    conn.execute("ALTER TABLE registry ADD COLUMN q6 TEXT NOT NULL DEFAULT 'Non so'")
+
 MIGRATIONS: Dict[int, MigrationFn] = {
-    # 2: migration_1_to_2,  # "per arrivare alla versione 2"
+     2: migration_1_to_2,  # "per arrivare alla versione 2"
 }
 
 
